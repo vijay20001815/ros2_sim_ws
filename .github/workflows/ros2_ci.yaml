@@ -52,11 +52,12 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      # Step 7: Format code with black and isort
+      # Step 7: Format Python code
       - name: Format Python code
         run: |
-          python3 -m isort src test
-          python3 -m black src test
+          # Format all Python files under src
+          find src -name "*.py" | xargs python3 -m isort
+          find src -name "*.py" | xargs python3 -m black
 
       # Step 8: Build workspace
       - name: Build workspace
