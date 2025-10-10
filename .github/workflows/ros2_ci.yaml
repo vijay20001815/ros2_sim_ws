@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup ROS2 Humble
@@ -19,9 +19,11 @@ jobs:
         with:
           required-ros-distributions: humble
 
-      - name: Install dependencies
+      - name: Install rosdep and dependencies
         run: |
           sudo apt update
+          sudo apt install -y python3-rosdep
+          sudo rosdep init || true
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
