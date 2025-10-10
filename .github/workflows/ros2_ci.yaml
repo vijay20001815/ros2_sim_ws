@@ -1,4 +1,4 @@
-name: ROS2 Humble Simulation CI
+name: ROS2 Humble CI
 
 on:
   push:
@@ -9,33 +9,20 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
 
     steps:
-      # Step 1: Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Step 2: Cleanup any leftover ROS files to avoid conflicts
       - name: Cleanup old ROS files
         run: |
           sudo rm -f /etc/apt/sources.list.d/ros2-latest.list
           sudo rm -f $GITHUB_WORKSPACE/ros.key || true
 
-      # Step 3: Setup ROS2 Humble
       - name: Setup ROS2 Humble
         uses: ros-tooling/setup-ros@v0.6
         with:
           required-ros-distributions: humble
 
-      # Step 4: Cache rosdep sources for faster builds
-      - name: Cache rosdep
-        uses: actions/cache@v3
-        with:
-          path: ~/.ros/rosdep/sources.cache
-          key: ${{ runner.os }}-rosdep-cache
-
-      # Step 5: Install dependencies
       - name: Install dependencies
         run: |
           sudo apt update
@@ -44,13 +31,11 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      # Step 6: Build ROS2 workspace
       - name: Build workspace
         run: |
           source /opt/ros/humble/setup.bash
           colcon build --symlink-install
 
-      # Step 7: Run tests
       - name: Run tests
         run: |
           source install/setup.bash
