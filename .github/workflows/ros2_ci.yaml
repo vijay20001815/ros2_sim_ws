@@ -35,29 +35,36 @@ jobs:
         with:
           required-ros-distributions: humble
 
-      # Step 5: Cache rosdep sources for faster builds
+      # Step 5: Cache rosdep for faster builds
       - name: Cache rosdep
         uses: actions/cache@v3
         with:
           path: ~/.ros/rosdep/sources.cache
           key: ${{ runner.os }}-rosdep-cache
 
-      # Step 6: Install ROS2 workspace dependencies
+      # Step 6: Install dependencies
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-rosdep python3-colcon-common-extensions
+          sudo apt install -y python3-rosdep python3-colcon-common-extensions python3-pip
+          pip3 install --user black isort
           sudo rosdep init || true
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      # Step 7: Build ROS2 workspace
+      # Step 7: Format code with black and isort
+      - name: Format Python code
+        run: |
+          python3 -m isort src test
+          python3 -m black src test
+
+      # Step 8: Build workspace
       - name: Build workspace
         run: |
           source /opt/ros/humble/setup.bash
           colcon build --symlink-install
 
-      # Step 8: Run tests
+      # Step 9: Run tests
       - name: Run tests
         run: |
           source install/setup.bash
