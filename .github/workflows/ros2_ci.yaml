@@ -13,10 +13,10 @@ jobs:
 
     steps:
       # Step 1: Checkout repository
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Clean old ROS apt files (if any)
+      # Step 2: Cleanup any leftover ROS files to avoid conflicts
       - name: Cleanup old ROS files
         run: |
           sudo rm -f /etc/apt/sources.list.d/ros2-latest.list
@@ -28,14 +28,14 @@ jobs:
         with:
           required-ros-distributions: humble
 
-      # Step 4: Cache rosdep sources
+      # Step 4: Cache rosdep sources for faster builds
       - name: Cache rosdep
         uses: actions/cache@v3
         with:
           path: ~/.ros/rosdep/sources.cache
           key: ${{ runner.os }}-rosdep-cache
 
-      # Step 5: Install ROS2 dependencies
+      # Step 5: Install dependencies
       - name: Install dependencies
         run: |
           sudo apt update
