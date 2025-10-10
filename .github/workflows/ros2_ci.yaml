@@ -16,26 +16,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Remove any old ROS keys and sources to prevent exit code 100
-      - name: Remove old ROS keys and sources
+      # Step 2: Cleanup old ROS keys/sources
+      - name: Cleanup old ROS keys and sources
         run: |
           sudo rm -f /etc/apt/sources.list.d/ros2-latest.list
           sudo rm -f /etc/apt/trusted.gpg.d/ros-archive-key.gpg || true
 
-      # Step 3: Setup ROS2 Humble
+      # Step 3: Add updated ROS2 GPG key and repository
+      - name: Add updated ROS2 GPG key
+        run: |
+          curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | gpg --dearmor | sudo tee /usr/share/keyrings/ros-archive-keyring.gpg > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ros2.list
+          sudo apt update
+
+      # Step 4: Setup ROS2 Humble
       - name: Setup ROS2 Humble
         uses: ros-tooling/setup-ros@v0.6
         with:
           required-ros-distributions: humble
 
-      # Step 4: Cache rosdep sources to speed up builds
+      # Step 5: Cache rosdep sources for faster builds
       - name: Cache rosdep
         uses: actions/cache@v3
         with:
           path: ~/.ros/rosdep/sources.cache
           key: ${{ runner.os }}-rosdep-cache
 
-      # Step 5: Install ROS2 workspace dependencies
+      # Step 6: Install ROS2 workspace dependencies
       - name: Install dependencies
         run: |
           sudo apt update
@@ -44,16 +51,15 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      # Step 6: Build ROS2 workspace
+      # Step 7: Build ROS2 workspace
       - name: Build workspace
         run: |
           source /opt/ros/humble/setup.bash
           colcon build --symlink-install
 
-      # Step 7: Run tests
+      # Step 8: Run tests
       - name: Run tests
         run: |
           source install/setup.bash
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
-
