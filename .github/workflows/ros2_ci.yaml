@@ -11,11 +11,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # 1️⃣ Checkout your repository
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up ROS2 Humble manually
       - name: Install ROS2 Humble
         run: |
           sudo apt update && sudo apt install -y curl gnupg2 lsb-release
@@ -28,31 +26,30 @@ jobs:
           sudo rosdep init || true
           rosdep update
 
-      # 3️⃣ Install Python dependencies
-      - name: Install Python tools
+      - name: Upgrade Python build tools
         run: |
-          python3 -m pip install -U pip setuptools wheel
+          python3 -m pip install --upgrade pip setuptools wheel colcon-common-extensions
+
+      - name: Install Python formatters
+        run: |
           python3 -m pip install black isort
 
-      # 4️⃣ Install ROS2 dependencies for your packages
-      - name: Install package dependencies
+      - name: Install ROS dependencies
         run: |
           source /opt/ros/humble/setup.bash
           rosdep install --from-paths src --ignore-src -r -y
 
-      # 5️⃣ Auto-format code before test
       - name: Auto-format Python code
         run: |
           find src -name "*.py" | xargs python3 -m isort
           find src -name "*.py" | xargs python3 -m black
 
-      # 6️⃣ Build your workspace
       - name: Build workspace
         run: |
           source /opt/ros/humble/setup.bash
+          python3 -m pip install --upgrade setuptools
           colcon build --symlink-install
 
-      # 7️⃣ Run tests
       - name: Run tests
         run: |
           source install/setup.bash
