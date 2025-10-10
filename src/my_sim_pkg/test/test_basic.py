@@ -1,14 +1,12 @@
-import unittest
-
+import pytest
 import rclpy
 
 
-class TestNode(unittest.TestCase):
-
-    def test_node_starts(self):
-        # Your test code here
-        pass
+def test_rclpy_import():
+    """Simple test to verify rclpy is available."""
+    assert rclpy is not None
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_basic_math():
+    """A dummy test to ensure pytest works."""
+    assert 2 + 2 == 4
