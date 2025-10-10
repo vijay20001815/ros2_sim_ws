@@ -16,11 +16,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Optional cleanup of old ROS files
-      - name: Cleanup old ROS files
+      # Step 2: Remove any old ROS keys and sources to prevent exit code 100
+      - name: Remove old ROS keys and sources
         run: |
           sudo rm -f /etc/apt/sources.list.d/ros2-latest.list
-          sudo rm -f $GITHUB_WORKSPACE/ros.key || true
+          sudo rm -f /etc/apt/trusted.gpg.d/ros-archive-key.gpg || true
 
       # Step 3: Setup ROS2 Humble
       - name: Setup ROS2 Humble
@@ -28,7 +28,7 @@ jobs:
         with:
           required-ros-distributions: humble
 
-      # Step 4: Cache rosdep sources for faster builds
+      # Step 4: Cache rosdep sources to speed up builds
       - name: Cache rosdep
         uses: actions/cache@v3
         with:
@@ -56,3 +56,4 @@ jobs:
           source install/setup.bash
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
+
