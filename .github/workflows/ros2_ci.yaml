@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,10 +25,11 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      - name: Setup Python tools
+      - name: Fix Python packaging versions (important)
         run: |
           pip install --upgrade pip
-          pip install setuptools==79.0.1 colcon-common-extensions flake8 pytest pytest-cov pytest-repeat pytest-rerunfailures
+          pip install setuptools==69.5.1 packaging==24.0 colcon-common-extensions==0.3.0
+          pip install flake8 pytest pytest-cov pytest-repeat pytest-rerunfailures
 
       - name: Build ROS2 workspace
         run: |
@@ -38,7 +40,6 @@ jobs:
         run: |
           source install/setup.bash
           colcon test --event-handlers console_direct+
-          # Continue even if some tests fail (you'll see failures in summary)
           colcon test-result --verbose || true
 
       - name: Upload test results
