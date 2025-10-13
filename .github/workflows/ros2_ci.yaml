@@ -1,4 +1,4 @@
-name: ROS2 Humble Simulation CI
+name: ROS2 Humble CI + Simulation Test
 
 on:
   push:
@@ -9,7 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,7 +24,7 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      - name: Fix Python packaging versions (important)
+      - name: Fix Python packaging versions
         run: |
           pip install --upgrade pip
           pip install setuptools==69.5.1 packaging==24.0 colcon-common-extensions==0.3.0
@@ -48,3 +47,44 @@ jobs:
         with:
           name: test-results
           path: build/**/test_results/**/*.xml
+
+  # ---------------------
+  # SIMULATION TEST JOB
+  # ---------------------
+  simulation:
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up ROS2 Humble
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Install simulation dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ros-humble-gazebo-ros-pkgs ros-humble-xacro
+          rosdep update
+          rosdep install --from-paths src --ignore-src -r -y
+
+      - name: Source workspace
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --event-handlers console_direct+
+          source install/setup.bash
+
+      - name: Run headless Gazebo test
+        run: |
+          echo "Launching Gazebo in headless mode..."
+          gzserver --verbose &   # start in background
+          sleep 5
+          if pgrep gzserver > /dev/null; then
+            echo "✅ Gazebo launched successfully!"
+            pkill gzserver
+          else
+            echo "❌ Gazebo failed to start!"
+            exit 1
+          fi
