@@ -1,4 +1,4 @@
-name: ROS2 Humble CI + Simulation Test
+name: ROS2 Humble CI
 
 on:
   push:

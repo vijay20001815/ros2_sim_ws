@@ -2,7 +2,7 @@ name: ROS2 Humble Continuous Deployment
 
 on:
   workflow_run:
-    workflows: ["ROS2 Humble CI + Simulation Test"]  # must match the CI workflow name
+    workflows: ["ROS2 Humble CI"]  # must match the CI workflow name
     types:
       - completed
 
