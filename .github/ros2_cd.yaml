@@ -1,36 +1,52 @@
-name: ROS2 Humble Simulation CD
+name: ROS2 Humble Continuous Deployment
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_run:
+    workflows: ["ROS2 Humble Continuous Integration"]  # must match the CI workflow name
+    types:
+      - completed
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-22.04
-    needs: build # waits for your CI workflow (ros2_ci.yaml) to finish
 
     steps:
+      # 1️⃣ Checkout your repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # 3️⃣ Log in to Docker Hub
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # 4️⃣ Build and push Docker image
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:latest
           context: .
-          file: ./Dockerfile  # path to your Dockerfile
+          file: ./Dockerfile  # adjust if Dockerfile is in a subfolder
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:${{ github.sha }}
 
-      - name: Confirm image pushed
+      # 5️⃣ Optional: verify image exists locally on runner
+      - name: Confirm local Docker image
         run: docker images | grep ros2_sim
+
+      # 6️⃣ Optional: Launch Gazebo headless to verify
+      - name: Launch Gazebo headless
+        run: |
+          source /opt/ros/humble/setup.bash
+          echo "Launching Gazebo in headless mode..."
+          xvfb-run -a gazebo --headless -s libgazebo_ros_factory.so &
+          sleep 10
+          echo "✅ Gazebo launched successfully!"
