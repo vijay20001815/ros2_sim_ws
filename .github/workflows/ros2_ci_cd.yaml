@@ -1,4 +1,4 @@
-name: ROS2 Humble CI + Simulation Test
+name: ROS2 Humble CI + CD (Build, Test & Deploy)
 
 on:
   push:
@@ -7,8 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  # =====================================================
+  # 1️⃣ CI: Build and Test ROS2 Workspace
+  # =====================================================
+  build_and_test:
     runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,12 +52,13 @@ jobs:
           name: test-results
           path: build/**/test_results/**/*.xml
 
-  # ---------------------
-  # SIMULATION TEST JOB
-  # ---------------------
+  # =====================================================
+  # 2️⃣ Simulation: Headless Gazebo Check
+  # =====================================================
   simulation:
     runs-on: ubuntu-22.04
-    needs: build
+    needs: build_and_test
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -70,7 +75,7 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      - name: Source workspace
+      - name: Build and source workspace
         run: |
           source /opt/ros/humble/setup.bash
           colcon build --event-handlers console_direct+
@@ -79,7 +84,7 @@ jobs:
       - name: Run headless Gazebo test
         run: |
           echo "Launching Gazebo in headless mode..."
-          gzserver --verbose &   # start in background
+          gzserver --verbose &
           sleep 5
           if pgrep gzserver > /dev/null; then
             echo "✅ Gazebo launched successfully!"
@@ -88,3 +93,44 @@ jobs:
             echo "❌ Gazebo failed to start!"
             exit 1
           fi
+
+  # =====================================================
+  # 3️⃣ CD: Build and Push Docker Image
+  # =====================================================
+  deploy:
+    runs-on: ubuntu-22.04
+    needs: simulation  # Only runs if simulation succeeded
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:${{ github.sha }}
+
+      - name: Confirm image exists locally
+        run: docker images | grep ros2_sim
+
+      - name: Verify headless Gazebo in container (optional)
+        run: |
+          source /opt/ros/humble/setup.bash
+          echo "Launching Gazebo inside container (headless)..."
+          xvfb-run -a gazebo --headless -s libgazebo_ros_factory.so &
+          sleep 10
+          echo "✅ Gazebo launched successfully!"
