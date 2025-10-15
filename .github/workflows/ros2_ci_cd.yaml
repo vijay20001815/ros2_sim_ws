@@ -1,4 +1,4 @@
-name: ROS2 Humble CI + CD1
+name: ROS2 Humble CI + CD
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
 
       # 2️⃣ Set up ROS 2 Humble
       - name: Set up ROS 2 Humble
-      - uses: ros-tooling/setup-ros@v0.7
+        uses: ros-tooling/setup-ros@v0.7
         with:
           required-ros-distributions: humble
 
