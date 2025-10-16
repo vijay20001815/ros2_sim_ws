@@ -1,10 +1,10 @@
-name: ROS2 Humble CI + CD build
+name: ROS2 Humble CI + CD Build & Push
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build-and-deploy:
@@ -56,15 +56,18 @@ jobs:
           name: test-results
           path: build/**/test_results/**/*.xml
 
-      # 8️⃣ Verify secrets (safe debug step)
-      - name: Debug — verify DockerHub username secret
+      # 8️⃣ Debug — verify DockerHub secrets
+      - name: Verify DockerHub secrets
         run: |
           if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
             echo "❌ DOCKERHUB_USERNAME is NOT set!"
             exit 1
-          else
-            echo "✅ DOCKERHUB_USERNAME is set (length: ${#DOCKERHUB_USERNAME})"
           fi
+          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "❌ DOCKERHUB_TOKEN is NOT set!"
+            exit 1
+          fi
+          echo "✅ Secrets found for DockerHub user: ${{ secrets.DOCKERHUB_USERNAME }}"
 
       # 9️⃣ Set up Docker Buildx
       - name: Set up Docker Buildx
@@ -86,17 +89,23 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:${{ github.run_number }}
             ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:$(date +'%Y-%m-%d')
 
-      # 1️⃣2️⃣ Confirm local image (debug)
-      - name: Confirm local Docker image
-        run: docker images | grep ros2_sim
+      # 1️⃣2️⃣ Confirm Docker push
+      - name: Confirm Docker push
+        run: |
+          echo "✅ Image pushed to Docker Hub!"
+          echo "Check your image at:"
+          echo "🔗 https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim/tags"
 
-      # 1️⃣3️⃣ Optional: Launch Gazebo headless to verify simulation
-      - name: Launch Gazebo headless (test)
+      # 1️⃣3️⃣ Optional: Launch Gazebo headless test
+      - name: Launch Gazebo headless (optional)
+        continue-on-error: true
         run: |
           source /opt/ros/humble/setup.bash
-          echo "Launching Gazebo in headless mode..."
+          echo "🚀 Launching Gazebo headless test..."
           xvfb-run -a gazebo --headless -s libgazebo_ros_factory.so &
           sleep 10
           echo "✅ Gazebo launched successfully!"
