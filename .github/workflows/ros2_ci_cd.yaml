@@ -1,4 +1,4 @@
-name: ROS2 Humble CI + CD build
+name: ROS2 Humble CI + CD build with QA
 
 on:
   push:
@@ -35,20 +35,38 @@ jobs:
           pip install setuptools==69.5.1 packaging==24.0 colcon-common-extensions==0.3.0
           pip install flake8 pytest pytest-cov pytest-repeat pytest-rerunfailures
 
-      # 5️⃣ Build ROS2 workspace
+      # 5️⃣ Lint Python code
+      - name: Lint Python code with flake8
+        run: |
+          pip install flake8
+          echo "🔍 Running Python lint checks..."
+          flake8 src/ --max-line-length=120 --ignore=E203,W503
+
+      # 6️⃣ Lint C++ code (optional)
+      - name: Lint C++ code with ament_lint_auto (if any)
+        run: |
+          echo "🔍 Running C++ lint checks..."
+          if colcon list | grep cpp; then
+            sudo apt-get install -y python3-rosdep2
+            ament_lint_auto --only cpp || echo "⚠️ C++ lint warnings (not failing build)"
+          else
+            echo "ℹ️ No C++ packages found, skipping C++ lint"
+          fi
+
+      # 7️⃣ Build ROS2 workspace
       - name: Build ROS2 workspace
         run: |
           source /opt/ros/humble/setup.bash
           colcon build --event-handlers console_direct+
 
-      # 6️⃣ Run tests
+      # 8️⃣ Run tests
       - name: Run tests
         run: |
           source install/setup.bash
           colcon test --event-handlers console_direct+
           colcon test-result --verbose || true
 
-      # 7️⃣ Upload test results
+      # 9️⃣ Upload test results
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -56,7 +74,7 @@ jobs:
           name: test-results
           path: build/**/test_results/**/*.xml
 
-      # 8️⃣ Debug: verify DockerHub username secret
+      # 🔟 Debug: verify DockerHub username secret
       - name: Debug — verify DockerHub username secret
         run: |
           if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
@@ -66,18 +84,18 @@ jobs:
             echo "✅ DOCKERHUB_USERNAME is set (length: ${#DOCKERHUB_USERNAME})"
           fi
 
-      # 9️⃣ Set up Docker Buildx
+      # 1️⃣1️⃣ Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 🔟 Log in to Docker Hub
+      # 1️⃣2️⃣ Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 1️⃣1️⃣ Build and push Docker image
+      # 1️⃣3️⃣ Build and push Docker image
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -88,11 +106,11 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/ros2_sim:${{ github.sha }}
 
-      # 1️⃣2️⃣ Confirm local Docker image (debug)
+      # 1️⃣4️⃣ Confirm local Docker image (debug)
       - name: Confirm local Docker image
         run: docker images | grep ros2_sim || echo "⚠️ No local image found (image was pushed remotely)."
 
-      # 1️⃣3️⃣ Optional: Launch Gazebo headless test
+      # 1️⃣5️⃣ Optional: Launch Gazebo headless test
       - name: Launch Gazebo headless (test)
         run: |
           source /opt/ros/humble/setup.bash
